@@ -2,3 +2,5 @@ streamlit
 sqlalchemy
 pandas
 openpyxl
+xlsxwriter
+python-dotenv
