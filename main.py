@@ -22,13 +22,6 @@ def check_password():
 
 check_password()
 
-from db.database import init_db
-
-st.set_page_config(page_title="Registo de Tempos de Produção", layout="centered")
-init_db()
-st.title("📋 Registo de Tempos")
-
-
 st.set_page_config(page_title="Registo de Tempos de Produção", layout="centered")
 init_db()
 st.title("📋 Registo de Tempos")
