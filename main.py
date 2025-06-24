@@ -15,7 +15,7 @@ def check_password():
             if submit:
                 if real_password and password == real_password:
                     st.session_state["authenticated"] = True
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.error("Incorrect password")
         st.stop()
