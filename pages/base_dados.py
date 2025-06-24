@@ -53,7 +53,12 @@ with col3:
 if obra_selecionada:
     query = query.filter(Obra.nome == obra_selecionada)
 
-caixilhos = query.all()
+caixilhos = (
+    db.query(Caixilho)
+    .order_by(Caixilho.data_caixa.desc())
+    .limit(100)
+    .all()
+)
 obras_dict = {o.id: o for o in db.query(Obra).all()}
 tempos = db.query(Tempo).filter(Tempo.caixilho_id.in_([c.id for c in caixilhos])).all()
 tempos_dict = defaultdict(dict)
