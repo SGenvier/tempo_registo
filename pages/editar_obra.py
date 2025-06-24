@@ -264,10 +264,11 @@ for cx in db.query(Caixilho).filter(Caixilho.obra_id.in_([o.id for o in obras]))
             if st.form_submit_button("Guardar Tempos"):
                 for setor, (di, df, tempo, operador, tempo_obj) in tempos_input.items():
                     if tempo != time_default(0, 0, 0):
+                        tempo_str = tempo.strftime("%H:%M:%S") if isinstance(tempo, time) else str(tempo)
                         if tempo_obj:
                             tempo_obj.data_inicio = di
                             tempo_obj.data_fim = df
-                            tempo_obj.tempo_execucao = tempo
+                            tempo_obj.tempo_execucao = tempo_str
                             tempo_obj.operador = operador
                         else:
                             novo = Tempo(
@@ -275,7 +276,7 @@ for cx in db.query(Caixilho).filter(Caixilho.obra_id.in_([o.id for o in obras]))
                                 estacao=setor,
                                 data_inicio=di,
                                 data_fim=df,
-                                tempo_execucao=tempo,
+                                tempo_execucao=tempo_str,
                                 operador=operador
                             )
                             db.add(novo)
