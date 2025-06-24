@@ -1,5 +1,33 @@
 import streamlit as st
 from db.database import init_db
+import os
+
+def check_password():
+    if "authenticated" not in st.session_state:
+        st.session_state["authenticated"] = False
+
+    if not st.session_state["authenticated"]:
+        with st.form("login"):
+            st.write("## Login")
+            password = st.text_input("Password", type="password")
+            submit = st.form_submit_button("Login")
+            real_password = os.environ.get("TEMPOREGISTO_PASSWORD")
+            if submit:
+                if real_password and password == real_password:
+                    st.session_state["authenticated"] = True
+                    st.rerun()
+                else:
+                    st.error("Incorrect password")
+        st.stop()
+
+check_password()
+
+from db.database import init_db
+
+st.set_page_config(page_title="Registo de Tempos de Produção", layout="centered")
+init_db()
+st.title("📋 Registo de Tempos")
+
 
 st.set_page_config(page_title="Registo de Tempos de Produção", layout="centered")
 init_db()
