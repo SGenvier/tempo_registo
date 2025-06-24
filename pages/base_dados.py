@@ -146,11 +146,9 @@ for c in caixilhos_page:
     for estacao in ["Corte", "Mec", "Limpeza", "Ass", "Vidro", "Emb", "Mot"]:
         tempo = tempos_dict[c.id].get(estacao)
         tempo_val = tempo.tempo_execucao if tempo else ""
-        # Converter para string no formato 00:00:00 se for datetime/time
         if hasattr(tempo_val, "strftime"):
             tempo_val = tempo_val.strftime("%H:%M:%S")
         elif isinstance(tempo_val, str) and re.match(r"^\d+:\d+(:\d+)?$", tempo_val):
-            # já está em formato string de tempo
             pass
         linha[f"Tempo {estacao}"] = tempo_val
         linha[f"Operador {estacao}"] = tempo.operador if tempo else ""
