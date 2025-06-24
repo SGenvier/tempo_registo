@@ -236,35 +236,38 @@ for cx in db.query(Caixilho).filter(Caixilho.obra_id.in_([o.id for o in obras]))
             for par in setores:
                 for setor in par:
                     if setor:
-                        with st.container():
-                            tempo_obj = db.query(Tempo).filter_by(caixilho_id=cx.id, estacao=setor).first()
-                            tempo_valor = to_time(tempo_obj.tempo_execucao) if tempo_obj else time(0, 0)
-                            operador_valor = tempo_obj.operador if tempo_obj else ""
-                            di = st.date_input(
-                                f"Início {setor}",
-                                value=tempo_obj.data_inicio if tempo_obj else date.today(),
-                                key=f"{cx.id}{setor}in"
-                            )
-                            df = st.date_input(
-                                f"Fim {setor}",
-                                value=tempo_obj.data_fim if tempo_obj else date.today(),
-                                key=f"{cx.id}{setor}out"
-                            )
-                            tempo = st.time_input(
-                                f"Tempo Execução {setor}",
-                                value=tempo_valor,
-                                key=f"{cx.id}{setor}tempo"
-                            )
-                            operador = st.text_input(
-                                f"Operador {setor}",
-                                value=operador_valor,
-                                key=f"{cx.id}{setor}operador"
-                            )
-                            tempos_input[setor] = (di, df, tempo, operador, tempo_obj)
+                        tempo_obj = db.query(Tempo).filter_by(caixilho_id=cx.id, estacao=setor).first()
+                        tempo_valor = to_time(tempo_obj.tempo_execucao) if tempo_obj else time(0, 0)
+                        operador_valor = tempo_obj.operador if tempo_obj else ""
+                        data_inicio_valor = tempo_obj.data_inicio if tempo_obj else None
+                        data_fim_valor = tempo_obj.data_fim if tempo_obj else None
+
+                        col1, col2, col3, col4 = st.columns([2, 2, 2, 2])
+                        di = col1.date_input(
+                            f"Início {setor}",
+                            value=data_inicio_valor if data_inicio_valor else None,
+                            key=f"{cx.id}{setor}in"
+                        )
+                        df = col2.date_input(
+                            f"Fim {setor}",
+                            value=data_fim_valor if data_fim_valor else None,
+                            key=f"{cx.id}{setor}out"
+                        )
+                        tempo = col3.time_input(
+                            f"Duração {setor}",
+                            value=tempo_valor,
+                            key=f"{cx.id}{setor}tempo"
+                        )
+                        operador = col4.text_input(
+                            f"Operador {setor}",
+                            value=operador_valor,
+                            key=f"{cx.id}{setor}operador"
+                        )
+                        tempos_input[setor] = (di, df, tempo, operador, tempo_obj)
             if st.form_submit_button("Guardar Tempos"):
                 for setor, (di, df, tempo, operador, tempo_obj) in tempos_input.items():
-                    if tempo != time_default(0, 0, 0):
-                        tempo_str = tempo.strftime("%H:%M:%S") if isinstance(tempo, time) else str(tempo)
+                    tempo_str = tempo.strftime("%H:%M:%S") if isinstance(tempo, time) else str(tempo)
+                    if tempo_str != "00:00:00":
                         if tempo_obj:
                             tempo_obj.data_inicio = di
                             tempo_obj.data_fim = df
