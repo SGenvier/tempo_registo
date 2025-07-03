@@ -9,21 +9,45 @@ st.title("🛠️ Editar Obra e Caixilhos")
 
 # 1) Cabeçalho
 # Obter todas as combinações únicas de (nome, fase)
-obras_tuplos = sorted(set((o.nome, o.fase) for o in db.query(Obra).all()))
-if not obras_tuplos:
-    st.warning("⚠️ Nenhuma obra registada.")
-    st.stop()
+obras_tuplos = set((o.nome, o.fase) for o in db.query(Obra).all())
+
+def obra_nome_priority(tuplo):
+    nome = tuplo[0]
+    if not nome:
+        return (2, "")  # vazio no fim
+    nome_upper = nome.upper()
+    if nome_upper.startswith("HY"):
+        return (0, nome_upper)
+    if nome_upper[0].isdigit():
+        return (1, nome_upper)
+    return (0, nome_upper)
+
+obras_tuplos = sorted(obras_tuplos, key=obra_nome_priority)
+
+# Adiciona opção vazia no início
+opcoes = [("", "")] + obras_tuplos
 
 c1, c2, c3 = st.columns([3,1,1])
 obra_fase = c1.selectbox(
-    "Obra (Fase)",
-    obras_tuplos,
-    format_func=lambda t: f"{t[0]} ({t[1]})"
+    "Obra Fase",
+    opcoes,
+    format_func=lambda t: f"{t[0]} {t[1]}" if t[0] else "",
+    index=0,
+    key="obra_fase_select"
 )
+
+# Só filtra se o utilizador escolher uma obra
+if obra_fase[0]:
+    obras = db.query(Obra).filter_by(nome=obra_fase[0], fase=obra_fase[1]).all()
+    obra = obras[0]  # Usar a primeira para editar semana, etc.
+else:
+    obras = []
+    obra = None
+
 semana_atual = c2.number_input("Semana", value=1, min_value=1, max_value=53)
 # Encontrar todas as obras com esse nome e fase
-obras = db.query(Obra).filter_by(nome=obra_fase[0], fase=obra_fase[1]).all()
-obra = obras[0]  # Usar a primeira para editar semana, etc.
+# obras = db.query(Obra).filter_by(nome=obra_fase[0], fase=obra_fase[1]).all()
+# obra = obras[0]  # Usar a primeira para editar semana, etc.
 
 if c3.button("Salvar Semana"):
     if obra.semana_embalamento != semana_atual:
@@ -39,7 +63,8 @@ if c3.button("Salvar Semana"):
     else:
         st.info("A semana de embalamento não foi alterada.")
 
-st.markdown(f"### 🧾 Obra: {obra.nome} — {obra.fase}")
+if obra:
+    st.markdown(f"### 🧾 Obra: {obra.nome} — {obra.fase}")
 
 # Botão para adicionar caixilho (toggle)
 if st.session_state.get("novo"):
@@ -71,6 +96,29 @@ def to_time(val):
         except Exception:
             return time(0, 0)
     return time(0, 0)
+
+def minutos_para_str(minutos):
+    if minutos is None:
+        return ""
+    h = minutos // 60
+    m = minutos % 60
+    return f"{h:02}:{m:02}"
+
+def str_para_minutos(s):
+    if not s or not isinstance(s, str):
+        return 0
+    partes = s.strip().split(":")
+    try:
+        if len(partes) == 2:
+            h, m = map(int, partes)
+            return h * 60 + m
+        elif len(partes) == 3:
+            h, m, _ = map(int, partes)
+            return h * 60 + m
+        else:
+            return int(s)
+    except Exception:
+        return 0
 
 # 2) Listar caixilhos
 for cx in db.query(Caixilho).filter(Caixilho.obra_id.in_([o.id for o in obras])).all():
@@ -237,7 +285,7 @@ for cx in db.query(Caixilho).filter(Caixilho.obra_id.in_([o.id for o in obras]))
                 for setor in par:
                     if setor:
                         tempo_obj = db.query(Tempo).filter_by(caixilho_id=cx.id, estacao=setor).first()
-                        tempo_valor = to_time(tempo_obj.tempo_execucao) if tempo_obj else time(0, 0)
+                        tempo_valor = minutos_para_str(tempo_obj.tempo_execucao) if tempo_obj else ""
                         operador_valor = tempo_obj.operador if tempo_obj else ""
                         data_inicio_valor = tempo_obj.data_inicio if tempo_obj else None
                         data_fim_valor = tempo_obj.data_fim if tempo_obj else None
@@ -253,8 +301,8 @@ for cx in db.query(Caixilho).filter(Caixilho.obra_id.in_([o.id for o in obras]))
                             value=data_fim_valor if data_fim_valor else None,
                             key=f"{cx.id}{setor}out"
                         )
-                        tempo = col3.time_input(
-                            f"Duração {setor}",
+                        tempo_str = col3.text_input(
+                            f"Duração {setor} (HH:MM)",
                             value=tempo_valor,
                             key=f"{cx.id}{setor}tempo"
                         )
@@ -263,15 +311,15 @@ for cx in db.query(Caixilho).filter(Caixilho.obra_id.in_([o.id for o in obras]))
                             value=operador_valor,
                             key=f"{cx.id}{setor}operador"
                         )
-                        tempos_input[setor] = (di, df, tempo, operador, tempo_obj)
+                        tempos_input[setor] = (di, df, tempo_str, operador, tempo_obj)
             if st.form_submit_button("Guardar Tempos"):
-                for setor, (di, df, tempo, operador, tempo_obj) in tempos_input.items():
-                    tempo_str = tempo.strftime("%H:%M:%S") if isinstance(tempo, time) else str(tempo)
-                    if tempo_str != "00:00:00":
+                for setor, (di, df, tempo_str, operador, tempo_obj) in tempos_input.items():
+                    minutos = str_para_minutos(tempo_str)
+                    if minutos > 0:
                         if tempo_obj:
                             tempo_obj.data_inicio = di
                             tempo_obj.data_fim = df
-                            tempo_obj.tempo_execucao = tempo_str
+                            tempo_obj.tempo_execucao = minutos
                             tempo_obj.operador = operador
                         else:
                             novo = Tempo(
@@ -279,7 +327,7 @@ for cx in db.query(Caixilho).filter(Caixilho.obra_id.in_([o.id for o in obras]))
                                 estacao=setor,
                                 data_inicio=di,
                                 data_fim=df,
-                                tempo_execucao=tempo_str,
+                                tempo_execucao=minutos,
                                 operador=operador
                             )
                             db.add(novo)
